@@ -1,0 +1,17 @@
+#!/bin/bash
+DIR="${1:-.}"
+
+count=$(find "$DIR" -type f \( -name "*.vtu" -o -name "*.pvtu" \) | wc -l)
+
+echo "WARNING: This will permanently delete $count .vtu and .pvtu files in $DIR"
+echo "This operation is not reversible."
+echo ""
+read -p "Type 'yes' to confirm: " confirm
+
+if [ "$confirm" != "yes" ]; then
+    echo "Aborted."
+    exit 1
+fi
+
+find "$DIR" -type f \( -name "*.vtu" -o -name "*.pvtu" \) -delete
+echo "Done. $count files deleted."

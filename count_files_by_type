@@ -1,0 +1,21 @@
+#!/bin/bash
+DIR="${1:-.}"
+
+total=$(find "$DIR" -type f | wc -l)
+echo "$total files total in $DIR"
+echo ""
+
+find "$DIR" -type f -printf "%f\n" | \
+    awk '{
+        n=split($0,a,".");
+        if (n>1) {
+            ext=a[n];
+            sub(/~$/, "", ext);
+            sub(/#$/, "", ext);
+            if (ext ~ /^[0-9]+$/) print "(numeric ext)";
+            else print "." ext;
+        } else {
+            print "(no ext)";
+        }
+    }' | \
+    sort | uniq -c | sort -rn

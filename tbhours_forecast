@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Hard-coded project end dates (YYYY-MM-DD)
+declare -A END_DATES
+END_DATES["project_462001194"]="2026-11-25"
+END_DATES["project_462001251"]="2027-01-07"
+
+# Convert human-readable size (e.g. 3.2G, 1.7T, 4.1K) to TB
+to_tb() {
+    local val="$1"
+    local num="${val%[KMGT]}"   # strip unit suffix
+    local unit="${val: -1}"     # last character is the unit
+    case "$unit" in
+        K) echo "scale=8; $num / 1073741824" | bc ;;
+        M) echo "scale=8; $num / 1048576"    | bc ;;
+        G) echo "scale=8; $num / 1024"       | bc ;;
+        T) echo "$num" ;;
+        *) echo "0" ;;
+    esac
+}
+
+# Run lumi-workspaces once and cache output
+WS_OUTPUT=$(lumi-workspaces)
+
+now_epoch=$(date +%s)
+
+for project in "project_462001194" "project_462001251"; do
+
+    # --- Disk usage ---
+    projappl_raw=$(echo "$WS_OUTPUT" | grep "/projappl/$project" | awk '{print $2}' | cut -d'/' -f1)
+    scratch_raw=$(echo  "$WS_OUTPUT" | grep "/scratch/$project"  | awk '{print $2}' | cut -d'/' -f1)
+    flash_raw=$(echo    "$WS_OUTPUT" | grep "/flash/$project"    | awk '{print $2}' | cut -d'/' -f1)
+
+    projappl_tb=$(to_tb "$projappl_raw")
+    scratch_tb=$(to_tb  "$scratch_raw")
+    flash_tb=$(to_tb    "$flash_raw")
+
+    total_disk_tb=$(echo "scale=4; $projappl_tb + $scratch_tb + $flash_tb" | bc)
+
+    # --- TB/hours from allocation table ---
+    alloc_line=$(echo "$WS_OUTPUT" | grep "^$project" | awk -F'|' '{print $4}')
+    tbh_used=$(echo  "$alloc_line" | awk '{print $1}' | cut -d'/' -f1 | tr -d ' ')
+    tbh_alloc=$(echo "$alloc_line" | awk '{print $1}' | cut -d'/' -f2 | tr -d ' ')
+
+    # --- Remaining hours until project end ---
+    end_epoch=$(date -d "${END_DATES[$project]}" +%s)
+    remaining_hours=$(( (end_epoch - now_epoch) / 3600 ))
+
+    # --- Projected TB/hours ---
+    # projappl + scratch: TB * hours (x1)
+    # flash:              TB * hours * 3
+    projected=$(echo "scale=0; $tbh_used + ($projappl_tb + $scratch_tb) * $remaining_hours + $flash_tb * 3 * $remaining_hours" | bc)
+
+    # --- Output ---
+    echo "============================================"
+    echo "Project: $project"
+    echo "--------------------------------------------"
+    echo "  Current disk usage:"
+    printf "    /projappl : %-8s  (%.4f TB)\n"      "$projappl_raw" "$projappl_tb"
+    printf "    /scratch  : %-8s  (%.4f TB)\n"      "$scratch_raw"  "$scratch_tb"
+    printf "    /flash    : %-8s  (%.4f TB, x3)\n"  "$flash_raw"    "$flash_tb"
+    printf "    Total     : %.4f TB\n"               "$total_disk_tb"
+    echo ""
+    echo "  TB/hours:"
+    printf "    Used so far    : %s / %s\n"  "$tbh_used"        "$tbh_alloc"
+    printf "    Hours remaining: %d\n"       "$remaining_hours"
+    printf "    Projected total: %s TB/hours\n" "$projected"
+    echo "============================================"
+    echo ""
+done
