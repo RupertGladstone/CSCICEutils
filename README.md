@@ -26,10 +26,10 @@ Since LUMI quotas cannot be extended, I also added this one on LUMI, to help us 
 
 ## Merging vtu files
 
-On mahti: <br>
-Load the python data module (more up to date version of python than the default version) <br>
+### On mahti <br>
+Load the python data module (more up to date version of python than the default version): <br>
 `module load python-data` <br>
-You may need to locally install the python vtk module (you should need to do this only once) <br>
+You may need to locally install the python vtk module (you should need to do this only once): <br>
 `pip install --user vtk` <br>
 Then go to the directory in which you want to merge your files and run: <br>
 `merge_vtu` <br>
