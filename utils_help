@@ -1,0 +1,10 @@
+#!/bin/bash
+README="/projappl/project_2000881/installs/utils/README.md"
+
+if command -v glow &>/dev/null; then
+    glow "$README"
+elif command -v pandoc &>/dev/null; then
+    pandoc -t plain "$README" | less
+else
+    less "$README"
+fi
