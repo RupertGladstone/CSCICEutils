@@ -49,3 +49,25 @@ You can optionally give a pvtu filename as a command line argument, in which cas
 ### On LUMI <br>
 Run `module load cray-python` instead of `module load python-data` <br>
 Apart from that it should function the same as on mahti.
+
+## Extracting a subset from a PVTU dataset
+
+Motivation for this: The whole Antarctic mesh is enormous. I wanted a couple of regions that I could extract and download separately for a quicker way of checking sanity of outputs.
+
+This is currently done by a list of partitions. These were selected interactively in Paraview and are specific to the 1020 partition mesh provided by Chen. As they are extracted by partition they are not following catchment boundaries. It is very quick to do: we're basically just taking a copy of the pvtu file and removing some lines from it. So very quick and easy to do.
+
+Currently available regions: <br>
+WAIS_PT    (WAIS PIG and Thwaites) <br>
+TAM        (Transantartic Mountains; along the edge of the Ross ice shelf)
+
+Example usage: <br> 
+`subset_pvtu TAM hotrans_t0001.pvtu`
+
+Optionally you can then run `merge_vtu`.
+
+### Setting up more regions for subsetting
+
+Very roughly: Use partition_centroids to create a dataset of just partition centroids. Overlay this with the full dataset in Paraview for context. Use Find Data and selection tools in combination with spreadsheet view. Save spreadsheet as csv and add it to this repo.
+
+Future options: It would be nice to have a script that divides the dataset up by catchment boundaries. This would be a heavier operation as it would require loading all partitions and accessing also a catchment definition dataset. It should be possible to automate this, but it would require a lot of memory and access to data processing such as the paraview.simple module.
+
