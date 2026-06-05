@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+# partition_centroids
+# Usage: partition_centroids <file.pvtu>
+
+import sys
+import os
+import re
+import xml.etree.ElementTree as ET
+import numpy as np
+import vtk
+import meshio
+
+
+if len(sys.argv) != 2:
+    print("Usage: partition_centroids <file.pvtu>")
+    sys.exit(1)
+
+pvtu_file = sys.argv[1]
+if not os.path.isfile(pvtu_file):
+    print(f"Error: file not found: {pvtu_file}")
+    sys.exit(1)
+
+# Parse pvtu to get piece file paths
+base_dir = os.path.dirname(os.path.abspath(pvtu_file))
+tree = ET.parse(pvtu_file)
+root = tree.getroot()
+
+piece_files = [
+    os.path.join(base_dir, piece.get("Source"))
+    for piece in root.iter("Piece")
+]
+
+if not piece_files:
+    print(f"No pieces found in {pvtu_file}")
+    sys.exit(1)
+
+print(f"Computing centroids for {len(piece_files)} partitions from {pvtu_file}...")
+
+centroid_points = vtk.vtkPoints()
+centroid_ids    = vtk.vtkIntArray()
+centroid_ids.SetName("PartitionId")
+
+for vtu_file in piece_files:
+    match = re.search(r'np(\d+)', os.path.basename(vtu_file))
+    if not match:
+        continue
+    partition_id = int(match.group(1))
+
+    mesh = meshio.read(vtu_file, file_format="vtu")
+    coords = mesh.points   # already a numpy array, no loop needed
+    
+    centroid = coords.mean(axis=0)
+
+    centroid_points.InsertNextPoint(centroid)
+    centroid_ids.InsertNextValue(partition_id)
+    print(f"  partition {partition_id}: centroid {centroid}")
+
+polydata = vtk.vtkPolyData()
+polydata.SetPoints(centroid_points)
+polydata.GetPointData().AddArray(centroid_ids)
+
+writer = vtk.vtkXMLPolyDataWriter()
+writer.SetFileName("partition_centroids.vtp")
+writer.SetInputData(polydata)
+writer.Write()
+
+print(f"\nWritten partition_centroids.vtp")
+print("In ParaView: open this file, go to Display -> Labels, enable Point Labels -> PartitionId")

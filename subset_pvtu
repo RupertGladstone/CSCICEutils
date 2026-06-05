@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+import sys
+import csv
+import xml.etree.ElementTree as ET
+import re
+import os
+
+def find_csv(filename):
+    """Checks the current directory, then the system PATH for the file."""
+    if os.path.exists(filename):
+        return filename
+    
+    # Check directories in the system $PATH
+    system_paths = os.environ.get("PATH", "").split(os.pathsep)
+    for path in system_paths:
+        full_path = os.path.join(path, filename)
+        if os.path.exists(full_path):
+            return full_path
+    return None
+
+# 1. Handle Command Line Arguments
+if len(sys.argv) < 3:
+    print("Usage: subset_pvtu <RegionName> <InputFile.pvtu>")
+    sys.exit(1)
+
+region_name = sys.argv[1]
+input_pvtu = sys.argv[2]
+csv_basename = f"{region_name}.csv"
+output_pvtu = f"subset_{region_name}.pvtu"
+
+# 2. Locate and Extract Partition IDs
+csv_path = find_csv(csv_basename)
+if not csv_path:
+    print(f"Error: Could not find {csv_basename} in current directory or $PATH.")
+    sys.exit(1)
+
+print(f"Using CSV found at: {csv_path}")
+
+try:
+    with open(csv_path, mode='r') as f:
+        reader = csv.reader(f)
+        next(reader)  # Skip header
+        target_ids = {int(row[1]) for row in reader if row}
+    print(f"Targeting {len(target_ids)} partitions.")
+except (ValueError, IndexError) as e:
+    print(f"Error parsing CSV: {e}")
+    sys.exit(1)
+
+# 3. Parse and Filter the XML
+try:
+    tree = ET.parse(input_pvtu)
+    root = tree.getroot()
+    grid = root.find('.//PUnstructuredGrid') or root.find('.//PPolyData')
+    
+    if grid is None:
+        print("Error: Could not find grid data in pvtu.")
+        sys.exit(1)
+
+    pvtu_dir = os.path.dirname(input_pvtu)
+    all_pieces = grid.findall('Piece')
+    kept_count = 0
+
+    for piece in all_pieces:
+        source_attr = piece.get('Source', '')
+        match = re.search(r'np(\d+)', source_attr)
+        
+        if match:
+            found_id = int(match.group(1))
+            if found_id in target_ids:
+                # Path check relative to the PVTU location
+                vtu_full_path = os.path.join(pvtu_dir, source_attr)
+                if os.path.exists(vtu_full_path):
+                    kept_count += 1
+                    continue
+        
+        # Remove if ID not in CSV or file doesn't exist
+        grid.remove(piece)
+
+    # 4. Save the new PVTU file
+    tree.write(output_pvtu, encoding='utf-8', xml_declaration=True)
+    print(f"Success! Created {output_pvtu} with {kept_count} pieces.")
+
+except ET.ParseError as e:
+    print(f"Error parsing PVTU XML: {e}")
+    sys.exit(1)
+
+    
