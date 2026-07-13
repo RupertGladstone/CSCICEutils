@@ -20,6 +20,12 @@ Then you have access to the following scripts: <br>
 
 These are all recursive, i.e. they process all subdirectories. The first two list subdirectories in order of size. The third lists in order of extension frequency (e.g. to check how many .vtu files you have). The last one is not reversible! Use with caution!
 
+### On roihu-cpu <br>
+
+To access the module: <br>
+`module use /projappl/project_2000881/Modules` <br>
+
+
 ### On LUMI <br>
 
 To access the module: <br>
