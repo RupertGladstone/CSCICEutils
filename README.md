@@ -38,7 +38,7 @@ Loading it is the same as on mahti. The same commands as on mahti are also avail
 
 Can be used in order to keep the file count down. Also makes downloading vtu files for local analysis slightly simpler.
 
-### On mahti <br>
+### On mahti and roihu-cpu <br>
 Load the python data module (more up to date version of python than the default version): <br>
 `module load python-data` <br>
 You may need to locally install the python vtk module (you should need to do this only once): <br>
