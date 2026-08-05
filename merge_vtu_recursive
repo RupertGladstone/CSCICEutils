@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import os
+import glob
+import subprocess
+import sys
+
+ARCHIVE_DIR = "pre_merge"
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+merge_vtu = os.path.join(script_dir, "merge_vtu")
+if not os.path.isfile(merge_vtu):
+    print(f"Error: merge_vtu not found next to this script ({merge_vtu}).")
+    sys.exit(1)
+
+processed = 0
+skipped = 0
+
+for dirpath, dirnames, filenames in os.walk("."):
+    pre_merge_path = os.path.join(dirpath, ARCHIVE_DIR)
+    if ARCHIVE_DIR in dirnames:
+        dirnames.remove(ARCHIVE_DIR)
+
+    pvtu_files = glob.glob(os.path.join(dirpath, "*.pvtu"))
+    if not pvtu_files:
+        continue
+
+    if os.path.isdir(pre_merge_path):
+        print(f"Skipping {dirpath}: '{ARCHIVE_DIR}/' already exists.")
+        skipped += 1
+        continue
+
+    print(f"\n=== {dirpath} ({len(pvtu_files)} .pvtu files) ===")
+    result = subprocess.run([merge_vtu], cwd=dirpath)
+    if result.returncode != 0:
+        print(f"Warning: merge_vtu exited with code {result.returncode} in {dirpath}")
+    else:
+        processed += 1
+
+print(f"\nDone. Merged in {processed} director{'y' if processed == 1 else 'ies'}, skipped {skipped}.")
